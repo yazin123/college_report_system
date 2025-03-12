@@ -1,0 +1,51 @@
+<!-- templates/certificate_courses/update_status.html -->
+{% extends "base.html" %}
+
+{% block title %}Update Course Status - {{ course.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mt-4">Update Course Status</h1>
+        <a href="{% url 'course_detail' pk=course.pk %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back to Course
+        </a>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-exchange-alt me-1"></i>
+            {{ course.name }} ({{ course.course_code }})
+        </div>
+        <div class="card-body">
+            <form method="post" novalidate>
+                {% csrf_token %}
+                
+                <div class="mb-4">
+                    <label for="status" class="form-label">Course Status <span class="text-danger">*</span></label>
+                    <select class="form-select" id="status" name="status" required>
+                        {% for status_code, status_name in course.STATUS_CHOICES %}
+                        <option value="{{ status_code }}" {% if course.status == status_code %}selected{% endif %}>
+                            {{ status_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">
+                        <ul>
+                            <li><strong>Planning:</strong> Course is in the planning stage, not yet started</li>
+                            <li><strong>Ongoing:</strong> Course has started and is currently in progress</li>
+                            <li><strong>Completed:</strong> Course has ended and all activities are complete</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i> Update Status
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

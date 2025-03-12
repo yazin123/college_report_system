@@ -1,0 +1,124 @@
+<!-- templates/certificate_courses/generate_certificates.html -->
+{% extends "base.html" %}
+
+{% block title %}Generate Certificates - {{ course.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mt-4">Generate Certificates</h1>
+        <a href="{% url 'course_detail' pk=course.pk %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back to Course
+        </a>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-certificate me-1"></i>
+            {{ course.name }} ({{ course.course_code }})
+        </div>
+        <div class="card-body">
+            {% if course.status != 'completed' %}
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-1"></i>
+                <strong>Warning:</strong> This course is not marked as completed. 
+                <a href="{% url 'update_course_status' pk=course.pk %}" class="alert-link">Change status to "Completed"</a> before generating certificates.
+            </div>
+            {% endif %}
+            
+            {% if not course.course_outcome %}
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-1"></i>
+                <strong>Warning:</strong> Course outcome is not provided.
+                <a href="{% url 'update_course_outcome' pk=course.pk %}" class="alert-link">Add course outcome</a> before generating certificates.
+            </div>
+            {% endif %}
+            
+            <form method="post" novalidate>
+                {% csrf_token %}
+                
+                <div class="table-responsive mb-4">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="selectAll">
+                                    </div>
+                                </th>
+                                <th>Student Name</th>
+                                <th>Registration Number</th>
+                                <th>Attendance</th>
+                                <th>Certificate Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for enrollment_item in enrollment_data %}
+                            <tr>
+                                <td>
+                                    <div class="form-check">
+                                        <input class="form-check-input enrollment-checkbox" type="checkbox" 
+                                            name="enrollments" value="{{ enrollment_item.enrollment.id }}"
+                                            id="enrollment_{{ enrollment_item.enrollment.id }}"
+                                            {% if enrollment_item.enrollment.certificate %}checked disabled{% endif %}>
+                                    </div>
+                                </td>
+                                <td>{{ enrollment_item.enrollment.student.name }}</td>
+                                <td>{{ enrollment_item.enrollment.student.registration_number }}</td>
+                                <td>
+                                    {% if enrollment_item.total_days > 0 %}
+                                        <span class="badge bg-{% if enrollment_item.attendance_percentage >= 75 %}success{% elif enrollment_item.attendance_percentage >= 50 %}warning{% else %}danger{% endif %}">
+                                            {{ enrollment_item.attendance_percentage|floatformat:1 }}% ({{ enrollment_item.present_days }}/{{ enrollment_item.total_days }})
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">No Records</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if enrollment_item.enrollment.certificate %}
+                                    <a href="{% url 'view_certificate' certificate_pk=enrollment_item.enrollment.certificate.pk %}" class="btn btn-sm btn-success" target="_blank">
+                                        <i class="fas fa-download me-1"></i> Download Certificate
+                                    </a>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Not Generated</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">No students enrolled in this course.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="alert alert-info mb-4">
+                    <i class="fas fa-info-circle me-1"></i>
+                    <strong>Note:</strong> Certificates will only be generated for students with at least 75% attendance.
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="submit" class="btn btn-primary" {% if course.status != 'completed' or not course.course_outcome %}disabled{% endif %}>
+                        <i class="fas fa-certificate me-1"></i> Generate Selected Certificates
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Select all checkbox
+        document.getElementById('selectAll').addEventListener('change', function() {
+            const isChecked = this.checked;
+            document.querySelectorAll('.enrollment-checkbox:not(:disabled)').forEach(function(checkbox) {
+                checkbox.checked = isChecked;
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,132 @@
+<!-- templates/certificate_courses/generate_report.html -->
+{% extends "base.html" %}
+
+{% block title %}Generate Report - {{ course.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mt-4">Generate Course Report</h1>
+        <a href="{% url 'course_detail' pk=course.pk %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back to Course
+        </a>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-file-alt me-1"></i>
+            {{ course.name }} ({{ course.course_code }})
+        </div>
+        <div class="card-body">
+            {% if can_generate_report %}
+            <div class="alert alert-info mb-4">
+                <h5 class="alert-heading">Report Ready to Generate</h5>
+                <p>All requirements for report generation have been met:</p>
+                <ul>
+                    <li>Course is marked as completed</li>
+                    <li>Course outcome is provided</li>
+                    <li>All enrolled students have attendance records</li>
+                    <li>All eligible students have certificates</li>
+                </ul>
+                <p class="mb-0">Click the button below to generate a comprehensive report for this course.</p>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <strong>Report Preview</strong>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h5>Course Information</h5>
+                        <table class="table table-bordered">
+                            <tbody>
+                                <tr>
+                                    <th style="width: 200px;">Course Name</th>
+                                    <td>{{ course.name }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Course Code</th>
+                                    <td>{{ course.course_code }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Department</th>
+                                    <td>{{ course.department.name }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Duration</th>
+                                    <td>{{ course.start_date|date:"F d, Y" }} to {{ course.end_date|date:"F d, Y" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Total Hours</th>
+                                    <td>{{ course.total_hours }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Number of Modules</th>
+                                    <td>{{ course.num_modules }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h5>Course Objective</h5>
+                        <p>{{ course.course_objective|linebreaks }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h5>Course Outcome</h5>
+                        <p>{{ course.course_outcome|linebreaks }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h5>Enrollment Details</h5>
+                        <p>Total Students Enrolled: <strong>{{ enrollments.count }}</strong></p>
+                    </div>
+                </div>
+            </div>
+            
+            <form method="post" novalidate>
+                {% csrf_token %}
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-file-pdf me-1"></i> Generate Final Report
+                    </button>
+                </div>
+            </form>
+            {% else %}
+            <div class="alert alert-warning mb-4">
+                <h5 class="alert-heading"><i class="fas fa-exclamation-triangle me-1"></i> Cannot Generate Report</h5>
+                <p>The following requirements must be met before generating a report:</p>
+                <ul>
+                    {% if course.status != 'completed' %}
+                    <li>Course must be marked as completed. 
+                        <a href="{% url 'update_course_status' pk=course.pk %}" class="alert-link">Update status</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% if not course.course_outcome %}
+                    <li>Course outcome must be provided. 
+                        <a href="{% url 'update_course_outcome' pk=course.pk %}" class="alert-link">Add outcome</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for enrollment in enrollments %}
+                    {% if not enrollment.has_attendance %}
+                    <li>{{ enrollment.student.name }} needs attendance records. 
+                        <a href="{% url 'take_attendance' course_pk=course.pk %}" class="alert-link">Take attendance</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% if not enrollment.has_certificate %}
+                    <li>{{ enrollment.student.name }} needs a certificate. 
+                        <a href="{% url 'generate_certificates' course_pk=course.pk %}" class="alert-link">Generate certificates</a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

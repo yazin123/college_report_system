@@ -1,0 +1,121 @@
+<!-- templates/certificate_courses/course_form.html -->
+{% extends "base.html" %}
+
+{% block title %}{% if course %}Edit{% else %}New{% endif %} Certificate Course{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mt-4">{% if course %}Edit{% else %}New{% endif %} Certificate Course</h1>
+        <a href="{% if course %}{% url 'course_detail' pk=course.pk %}{% else %}{% url 'course_list' %}{% endif %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back
+        </a>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-edit me-1"></i>
+            Course Information
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data" novalidate>
+                {% csrf_token %}
+                
+                {% if form.errors %}
+                <div class="alert alert-danger">
+                    <strong>Please correct the following errors:</strong>
+                    <ul>
+                        {% for field in form %}
+                            {% for error in field.errors %}
+                                <li>{{ field.label }}: {{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                        {% for error in form.non_field_errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.name.id_for_label }}" class="form-label">Course Name <span class="text-danger">*</span></label>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                        <div class="invalid-feedback d-block">{{ form.name.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.course_code.id_for_label }}" class="form-label">Course Code <span class="text-danger">*</span></label>
+                        {{ form.course_code }}
+                        {% if form.course_code.errors %}
+                        <div class="invalid-feedback d-block">{{ form.course_code.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.start_date.id_for_label }}" class="form-label">Start Date <span class="text-danger">*</span></label>
+                        {{ form.start_date }}
+                        {% if form.start_date.errors %}
+                        <div class="invalid-feedback d-block">{{ form.start_date.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.end_date.id_for_label }}" class="form-label">End Date <span class="text-danger">*</span></label>
+                        {{ form.end_date }}
+                        {% if form.end_date.errors %}
+                        <div class="invalid-feedback d-block">{{ form.end_date.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.num_modules.id_for_label }}" class="form-label">Number of Modules <span class="text-danger">*</span></label>
+                        {{ form.num_modules }}
+                        {% if form.num_modules.errors %}
+                        <div class="invalid-feedback d-block">{{ form.num_modules.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.total_hours.id_for_label }}" class="form-label">Total Hours <span class="text-danger">*</span></label>
+                        {{ form.total_hours }}
+                        {% if form.total_hours.errors %}
+                        <div class="invalid-feedback d-block">{{ form.total_hours.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.brochure.id_for_label }}" class="form-label">Brochure (PDF)</label>
+                    {{ form.brochure }}
+                    {% if form.brochure.errors %}
+                    <div class="invalid-feedback d-block">{{ form.brochure.errors }}</div>
+                    {% endif %}
+                    {% if course and course.brochure %}
+                    <div class="form-text">
+                        Current file: <a href="{{ course.brochure.url }}" target="_blank">{{ course.brochure.name }}</a>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.course_objective.id_for_label }}" class="form-label">Course Objective <span class="text-danger">*</span></label>
+                    {{ form.course_objective }}
+                    {% if form.course_objective.errors %}
+                    <div class="invalid-feedback d-block">{{ form.course_objective.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i> {% if course %}Update{% else %}Create{% endif %} Course
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

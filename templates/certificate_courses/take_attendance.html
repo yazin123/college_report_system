@@ -1,0 +1,109 @@
+<!-- templates/certificate_courses/take_attendance.html -->
+{% extends "base.html" %}
+
+{% block title %}Take Attendance - {{ course.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mt-4">Take Attendance</h1>
+        <a href="{% url 'attendance_list' course_pk=course.pk %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back to Attendance List
+        </a>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-calendar-day me-1"></i>
+            {{ course.name }} ({{ course.course_code }})
+        </div>
+        <div class="card-body">
+            <form method="post" novalidate>
+                {% csrf_token %}
+                
+                <div class="mb-4">
+                    <label for="attendance_date" class="form-label">Attendance Date <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control" id="attendance_date" name="attendance_date" value="{{ attendance_date }}" required>
+                    <div class="form-text">
+                        Select the date for which you want to record attendance.
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                <strong>Student Attendance</strong>
+                            </div>
+                            <div class="col-auto">
+                                <button type="button" class="btn btn-outline-success btn-sm" id="markAllPresent">
+                                    <i class="fas fa-check me-1"></i> Mark All Present
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-sm ms-2" id="markAllAbsent">
+                                    <i class="fas fa-times me-1"></i> Mark All Absent
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Student Name</th>
+                                        <th>Registration Number</th>
+                                        <th class="text-center">Attendance</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for enrollment in enrollments %}
+                                    <tr>
+                                        <td>{{ enrollment.student.name }}</td>
+                                        <td>{{ enrollment.student.registration_number }}</td>
+                                        <td class="text-center">
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input attendance-checkbox" type="checkbox" 
+                                                    id="attendance_{{ enrollment.id }}" 
+                                                    name="attendance_{{ enrollment.id }}" 
+                                                    {% if form.initial.attendance_enrollment.id %}checked{% endif %}>
+                                                <label class="form-check-label" for="attendance_{{ enrollment.id }}">Present</label>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i> Save Attendance
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Mark all present
+        document.getElementById('markAllPresent').addEventListener('click', function() {
+            document.querySelectorAll('.attendance-checkbox').forEach(function(checkbox) {
+                checkbox.checked = true;
+            });
+        });
+        
+        // Mark all absent
+        document.getElementById('markAllAbsent').addEventListener('click', function() {
+            document.querySelectorAll('.attendance-checkbox').forEach(function(checkbox) {
+                checkbox.checked = false;
+            });
+        });
+    });
+</script>
+{% endblock %}

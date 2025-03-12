@@ -1,0 +1,43 @@
+<!-- templates/certificate_courses/student_confirm_delete.html -->
+{% extends "base.html" %}
+
+{% block title %}Delete Student{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mt-4">Delete Student</h1>
+        <a href="{% url 'student_list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back to Students
+        </a>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-danger text-white">
+            <i class="fas fa-exclamation-triangle me-1"></i>
+            Confirm Deletion
+        </div>
+        <div class="card-body">
+            <h5>Are you sure you want to delete the student "{{ student.name }}" ({{ student.registration_number }})?</h5>
+            <p class="text-danger">This action cannot be undone. All data associated with this student will be permanently removed, including:</p>
+            <ul class="text-danger">
+                <li>All course enrollments</li>
+                <li>All attendance records</li>
+                <li>All certificates</li>
+            </ul>
+            
+            <form method="post" novalidate>
+                {% csrf_token %}
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                    <a href="{% url 'student_list' %}" class="btn btn-secondary me-md-2">
+                        <i class="fas fa-times me-1"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-1"></i> Delete Student
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

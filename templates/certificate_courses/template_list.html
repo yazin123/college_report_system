@@ -1,0 +1,60 @@
+<!-- templates/certificate_courses/template_list.html -->
+{% extends "base.html" %}
+
+{% block title %}Certificate Templates{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mt-4">Certificate Templates</h1>
+        <a href="{% url 'template_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i> New Template
+        </a>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-file-certificate me-1"></i>
+            Available Templates
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for template in templates %}
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">{{ template.name }}</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">
+                                <strong>Created:</strong> {{ template.created_at|date:"M d, Y" }}<br>
+                                <strong>Last Updated:</strong> {{ template.updated_at|date:"M d, Y" }}
+                            </p>
+                            <div class="d-grid gap-2">
+                                <a href="{{ template.template_file.url }}" class="btn btn-outline-primary" target="_blank">
+                                    <i class="fas fa-eye me-1"></i> View Template
+                                </a>
+                            </div>
+                        </div>
+                        <div class="card-footer d-flex justify-content-between">
+                            <a href="{% url 'template_update' pk=template.pk %}" class="btn btn-warning btn-sm">
+                                <i class="fas fa-edit me-1"></i> Edit
+                            </a>
+                            <a href="{% url 'template_delete' pk=template.pk %}" class="btn btn-danger btn-sm">
+                                <i class="fas fa-trash me-1"></i> Delete
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        <p class="mb-0">No certificate templates have been added yet.</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

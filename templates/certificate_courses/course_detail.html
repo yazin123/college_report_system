@@ -1,0 +1,206 @@
+<!-- templates/certificate_courses/course_detail.html -->
+{% extends "base.html" %}
+
+{% block title %}{{ course.name }} - Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mt-4">{{ course.name }}</h1>
+        <div>
+            <a href="{% url 'course_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back to Courses
+            </a>
+            <a href="{% url 'course_update' pk=course.pk %}" class="btn btn-warning">
+                <i class="fas fa-edit me-1"></i> Edit
+            </a>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Course Information
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <strong>Course Code:</strong> {{ course.course_code }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>Status:</strong> 
+                            <span class="badge bg-{% if course.status == 'planning' %}secondary{% elif course.status == 'ongoing' %}primary{% else %}success{% endif %}">
+                                {{ course.get_status_display }}
+                            </span>
+                            <a href="{% url 'update_course_status' pk=course.pk %}" class="btn btn-outline-secondary btn-sm ms-2">
+                                <i class="fas fa-exchange-alt"></i> Change
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>Start Date:</strong> {{ course.start_date|date:"F d, Y" }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>End Date:</strong> {{ course.end_date|date:"F d, Y" }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>Number of Modules:</strong> {{ course.num_modules }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <strong>Total Hours:</strong> {{ course.total_hours }}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h5>Course Objective</h5>
+                        <p>{{ course.course_objective|linebreaks }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h5>Course Outcome</h5>
+                        {% if course.course_outcome %}
+                        <p>{{ course.course_outcome|linebreaks }}</p>
+                        {% else %}
+                        <p class="text-muted">No course outcome provided yet.</p>
+                        <a href="{% url 'update_course_outcome' pk=course.pk %}" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i> Add Course Outcome
+                        </a>
+                        {% endif %}
+                    </div>
+                    
+                    {% if course.brochure %}
+                    <div class="mb-3">
+                        <h5>Brochure</h5>
+                        <a href="{{ course.brochure.url }}" class="btn btn-outline-primary" target="_blank">
+                            <i class="fas fa-file-pdf me-1"></i> View Brochure
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-users me-1"></i>
+                    Enrolled Students ({{ enrollments.count }})
+                    <a href="{% url 'manage_enrollment' course_pk=course.pk %}" class="btn btn-outline-primary btn-sm float-end">
+                        <i class="fas fa-user-edit me-1"></i> Manage Enrollments
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if enrollments %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Registration Number</th>
+                                    <th>Enrollment Date</th>
+                                    <th>Certificate</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for enrollment in enrollments %}
+                                <tr>
+                                    <td>{{ enrollment.student.name }}</td>
+                                    <td>{{ enrollment.student.registration_number }}</td>
+                                    <td>{{ enrollment.enrollment_date|date:"M d, Y" }}</td>
+                                    <td>
+                                        {% if enrollment.certificate %}
+                                        <a href="{% url 'view_certificate' certificate_pk=enrollment.certificate.pk %}" class="btn btn-sm btn-success" target="_blank">
+                                            <i class="fas fa-certificate me-1"></i> View Certificate
+                                        </a>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Not Generated</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-center text-muted">No students enrolled in this course yet.</p>
+                    <div class="text-center">
+                        <a href="{% url 'manage_enrollment' course_pk=course.pk %}" class="btn btn-primary">
+                            <i class="fas fa-user-plus me-1"></i> Enroll Students
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-cogs me-1"></i>
+                    Actions
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'attendance_list' course_pk=course.pk %}" class="btn btn-primary">
+                            <i class="fas fa-clipboard-check me-1"></i> View Attendance
+                        </a>
+                        <a href="{% url 'take_attendance' course_pk=course.pk %}" class="btn btn-info">
+                            <i class="fas fa-user-check me-1"></i> Take Attendance
+                        </a>
+                        <a href="{% url 'generate_certificates' course_pk=course.pk %}" class="btn btn-success {% if course.status != 'completed' %}disabled{% endif %}">
+                            <i class="fas fa-certificate me-1"></i> Generate Certificates
+                        </a>
+                        <a href="{% url 'generate_report' course_pk=course.pk %}" class="btn btn-warning {% if not can_generate_report %}disabled{% endif %}">
+                            <i class="fas fa-file-alt me-1"></i> Generate Report
+                        </a>
+                        <a href="{% url 'export_course_data' pk=course.pk %}" class="btn btn-secondary">
+                            <i class="fas fa-file-export me-1"></i> Export Data
+                        </a>
+                        <a href="{% url 'course_delete' pk=course.pk %}" class="btn btn-danger">
+                            <i class="fas fa-trash me-1"></i> Delete Course
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-chart-bar me-1"></i>
+                    Course Statistics
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h5>Enrollment Stats</h5>
+                        <p>Total Students: <strong>{{ enrollments.count }}</strong></p>
+                    </div>
+                    
+                    {% if enrollments %}
+                    <div class="mb-3">
+                        <h5>Certificate Status</h5>
+                        <div class="progress" style="height: 20px;">
+                            <!-- Temporarily removed certificate percentage calculation -->
+                            <div class="progress-bar bg-success" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                        </div>
+                        <small class="text-muted">Percentage of students with certificates</small>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <h5>Course Timeline</h5>
+                        <!-- Temporarily removed course timeline calculation -->
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar {% if course.status == 'completed' %}bg-success{% elif course.status == 'ongoing' %}bg-primary{% else %}bg-secondary{% endif %}" role="progressbar" style="width: 50%;" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100">50%</div>
+                        </div>
+                        <small class="text-muted">Course progress</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Add any custom JavaScript for the course detail page
+</script>
+{% endblock %}
