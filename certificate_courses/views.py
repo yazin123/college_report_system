@@ -507,6 +507,7 @@ def view_certificate(request, certificate_pk):
 # certificate_courses/views.py (continued)
 
 # Report Generation
+# Report Generation
 @login_required
 def generate_report(request, course_pk):
     department = request.user.department
@@ -520,79 +521,342 @@ def generate_report(request, course_pk):
         return redirect('course_detail', pk=course_pk)
     
     if request.method == 'POST':
-        # In a real application, you would use a library like ReportLab to generate PDF reports
-        # Here we'll create a dummy file for demonstration
+        # Get the requested format (default to PDF if not specified)
+        report_format = request.POST.get('report_format', 'pdf').lower()
         
-        enrollments = course.enrollments.all()
+        if report_format == 'docx':
+            # Generate Word document using python-docx
+            try:
+                from docx import Document
+                from docx.shared import Inches, Pt, RGBColor
+                from docx.enum.text import WD_ALIGN_PARAGRAPH
+                
+                document = Document()
+                
+                # Add title
+                title = document.add_heading('CERTIFICATE COURSE REPORT', level=0)
+                title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                
+                # Add course information
+                document.add_heading('Course Information', level=1)
+                table = document.add_table(rows=5, cols=2)
+                table.style = 'Table Grid'
+                
+                # Fill course info table
+                rows = table.rows
+                rows[0].cells[0].text = 'Course Name'
+                rows[0].cells[1].text = course.name
+                rows[1].cells[0].text = 'Course Code'
+                rows[1].cells[1].text = course.course_code
+                rows[2].cells[0].text = 'Department'
+                rows[2].cells[1].text = course.department.name
+                rows[3].cells[0].text = 'Duration'
+                rows[3].cells[1].text = f"{course.start_date} to {course.end_date}"
+                rows[4].cells[0].text = 'Total Hours'
+                rows[4].cells[1].text = str(course.total_hours)
+                
+                # Course objective
+                document.add_heading('Course Objective', level=1)
+                document.add_paragraph(course.course_objective)
+                
+                # Course outcome
+                document.add_heading('Course Outcome', level=1)
+                document.add_paragraph(course.course_outcome)
+                
+                # Enrollment details
+                document.add_heading('Enrollment Details', level=1)
+                document.add_paragraph(f"Total Students Enrolled: {enrollments.count()}")
+                
+                # Student list with attendance
+                document.add_heading('List of Students', level=1)
+                student_table = document.add_table(rows=1, cols=4)
+                student_table.style = 'Table Grid'
+                
+                # Add header row
+                header_cells = student_table.rows[0].cells
+                header_cells[0].text = 'Student Name'
+                header_cells[1].text = 'Registration Number'
+                header_cells[2].text = 'Attendance'
+                header_cells[3].text = 'Certificate Issued'
+                
+                # Add student data
+                for enrollment in enrollments:
+                    row_cells = student_table.add_row().cells
+                    
+                    # Calculate attendance
+                    total_days = AttendanceRecord.objects.filter(enrollment=enrollment).count()
+                    present_days = AttendanceRecord.objects.filter(enrollment=enrollment, is_present=True).count()
+                    attendance_percentage = (present_days / total_days) * 100 if total_days > 0 else 0
+                    
+                    row_cells[0].text = enrollment.student.name
+                    row_cells[1].text = enrollment.student.registration_number
+                    row_cells[2].text = f"{present_days}/{total_days} ({attendance_percentage:.1f}%)"
+                    row_cells[3].text = 'Yes' if hasattr(enrollment, 'certificate') else 'No'
+                
+                # Add generation date
+                document.add_paragraph(f"Report Generated On: {timezone.now().date()}")
+                
+                # Add signature lines
+                document.add_paragraph()
+                document.add_paragraph()
+                signature_table = document.add_table(rows=1, cols=3)
+                signature_cells = signature_table.rows[0].cells
+                
+                for i, title in enumerate(['Course Coordinator', 'HOD', 'Principal']):
+                    signature_cells[i].text = '_'*30 + f"\n{title}"
+                
+                # Save to a temporary file
+                with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as temp_file:
+                    temp_path = temp_file.name
+                
+                document.save(temp_path)
+                
+                # Save the report file to the model
+                try:
+                    report = course.report
+                except CourseReport.DoesNotExist:
+                    report = CourseReport(course=course)
+                
+                with open(temp_path, 'rb') as f:
+                    report_filename = f"report_{course.course_code}.docx"
+                    report.report_file.save(report_filename, BytesIO(f.read()))
+                
+                # Clean up the temporary file
+                os.unlink(temp_path)
+                
+                messages.success(request, 'Report generated successfully as Word document.')
+                
+                # Return the file as a download
+                response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+                response['Content-Disposition'] = f'attachment; filename="{report_filename}"'
+                with open(report.report_file.path, 'rb') as f:
+                    response.write(f.read())
+                return response
+                
+            except ImportError:
+                messages.warning(request, 'Python-docx library not installed. Generating PDF instead.')
+                report_format = 'pdf'
         
-        # Create report content
-        report_content = f"""
-        CERTIFICATE COURSE REPORT
-        
-        Course Name: {course.name}
-        Course Code: {course.course_code}
-        Department: {course.department.name}
-        Duration: {course.start_date} to {course.end_date}
-        Total Hours: {course.total_hours}
-        
-        COURSE OBJECTIVE:
-        {course.course_objective}
-        
-        COURSE OUTCOME:
-        {course.course_outcome}
-        
-        ENROLLMENT DETAILS:
-        Total Students Enrolled: {enrollments.count()}
-        
-        LIST OF STUDENTS:
-        """
-        
-        for idx, enrollment in enumerate(enrollments, 1):
-            # Calculate attendance
-            total_days = AttendanceRecord.objects.filter(enrollment=enrollment).count()
-            present_days = AttendanceRecord.objects.filter(enrollment=enrollment, is_present=True).count()
-            attendance_percentage = (present_days / total_days) * 100 if total_days > 0 else 0
-            
-            report_content += f"""
-        {idx}. {enrollment.student.name} (Reg No: {enrollment.student.registration_number})
-           Attendance: {present_days}/{total_days} ({attendance_percentage:.1f}%)
-           Certificate Issued: {'Yes' if hasattr(enrollment, 'certificate') else 'No'}
-            """
-        
-        report_content += f"""
-        Report Generated On: {timezone.now().date()}
-        """
-        
-        # Create a temporary file
-        with tempfile.NamedTemporaryFile(suffix='.txt', delete=False) as temp_file:
-            temp_file.write(report_content.encode('utf-8'))
-            temp_path = temp_file.name
-        
-        # Save the report file to the model
-        # Check if report already exists
-        try:
-            report = course.report
-        except CourseReport.DoesNotExist:
-            report = CourseReport(course=course)
-        
-        with open(temp_path, 'rb') as f:
-            report_filename = f"report_{course.course_code}.txt"
-            report.report_file.save(report_filename, BytesIO(f.read()))
-        
-        # Clean up the temporary file
-        os.unlink(temp_path)
-        
-        messages.success(request, 'Report generated successfully.')
-        return redirect('view_report', report_pk=report.pk)
+        # Generate PDF (default or fallback)
+        if report_format == 'pdf':
+            try:
+                from reportlab.lib.pagesizes import letter
+                from reportlab.lib import colors
+                from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+                from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+                
+                # Create a temporary file to save the PDF to
+                with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_file:
+                    temp_path = temp_file.name
+                
+                # Create the PDF document
+                doc = SimpleDocTemplate(
+                    temp_path,
+                    pagesize=letter,
+                    rightMargin=72, leftMargin=72,
+                    topMargin=72, bottomMargin=72
+                )
+                
+                # Container for the elements to be added to the PDF
+                elements = []
+                
+                # Styles
+                styles = getSampleStyleSheet()
+                styles.add(ParagraphStyle(name='Center', alignment=1))
+                
+                # Title
+                elements.append(Paragraph('CERTIFICATE COURSE REPORT', styles['Title']))
+                elements.append(Spacer(1, 12))
+                
+                # Course Information Table
+                course_data = [
+                    ['Course Name', course.name],
+                    ['Course Code', course.course_code],
+                    ['Department', course.department.name],
+                    ['Duration', f"{course.start_date} to {course.end_date}"],
+                    ['Total Hours', str(course.total_hours)]
+                ]
+                
+                course_table = Table(course_data, colWidths=[120, 350])
+                course_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+                    ('TEXTCOLOR', (0, 0), (0, -1), colors.black),
+                    ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+                    ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (0, -1), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+                    ('TOPPADDING', (0, 0), (-1, -1), 12),
+                    ('BACKGROUND', (1, 0), (-1, -1), colors.white),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                ]))
+                
+                elements.append(Paragraph('Course Information', styles['Heading1']))
+                elements.append(course_table)
+                elements.append(Spacer(1, 20))
+                
+                # Course Objective
+                elements.append(Paragraph('Course Objective', styles['Heading1']))
+                elements.append(Paragraph(course.course_objective, styles['Normal']))
+                elements.append(Spacer(1, 12))
+                
+                # Course Outcome
+                elements.append(Paragraph('Course Outcome', styles['Heading1']))
+                elements.append(Paragraph(course.course_outcome, styles['Normal']))
+                elements.append(Spacer(1, 12))
+                
+                # Enrollment Details
+                elements.append(Paragraph('Enrollment Details', styles['Heading1']))
+                elements.append(Paragraph(f"Total Students Enrolled: {enrollments.count()}", styles['Normal']))
+                elements.append(Spacer(1, 12))
+                
+                # Student List
+                elements.append(Paragraph('List of Students', styles['Heading1']))
+                
+                # Student table data
+                student_data = [['Student Name', 'Registration Number', 'Attendance', 'Certificate']]
+                
+                for enrollment in enrollments:
+                    # Calculate attendance
+                    total_days = AttendanceRecord.objects.filter(enrollment=enrollment).count()
+                    present_days = AttendanceRecord.objects.filter(enrollment=enrollment, is_present=True).count()
+                    attendance_percentage = (present_days / total_days) * 100 if total_days > 0 else 0
+                    
+                    student_data.append([
+                        enrollment.student.name,
+                        enrollment.student.registration_number,
+                        f"{present_days}/{total_days} ({attendance_percentage:.1f}%)",
+                        'Yes' if hasattr(enrollment, 'certificate') else 'No'
+                    ])
+                
+                student_table = Table(student_data, colWidths=[120, 120, 120, 100])
+                student_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                ]))
+                
+                elements.append(student_table)
+                elements.append(Spacer(1, 20))
+                
+                # Generation date
+                elements.append(Paragraph(f"Report Generated On: {timezone.now().date()}", styles['Normal']))
+                elements.append(Spacer(1, 30))
+                
+                # Signature fields
+                signature_data = [
+                    ['_'*20, '_'*20, '_'*20],
+                    ['Course Coordinator', 'HOD', 'Principal']
+                ]
+                
+                signature_table = Table(signature_data, colWidths=[150, 150, 150])
+                signature_table.setStyle(TableStyle([
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ]))
+                
+                elements.append(signature_table)
+                
+                # Build the PDF
+                doc.build(elements)
+                
+                # Save the report to CourseReport model
+                try:
+                    report = course.report
+                except CourseReport.DoesNotExist:
+                    report = CourseReport(course=course)
+                
+                with open(temp_path, 'rb') as f:
+                    report_filename = f"report_{course.course_code}.pdf"
+                    report.report_file.save(report_filename, BytesIO(f.read()))
+                
+                # Clean up the temporary file
+                os.unlink(temp_path)
+                
+                messages.success(request, 'Report generated successfully as PDF.')
+                
+                # Return the file as a download
+                response = HttpResponse(content_type='application/pdf')
+                response['Content-Disposition'] = f'attachment; filename="{report_filename}"'
+                with open(report.report_file.path, 'rb') as f:
+                    response.write(f.read())
+                return response
+                
+            except ImportError:
+                # Fallback to plain text if ReportLab is not installed
+                messages.warning(request, 'ReportLab library not installed. Generating text report instead.')
+                
+                # Create report content as text (your original text generation code)
+                report_content = f"""
+                CERTIFICATE COURSE REPORT
+                
+                Course Name: {course.name}
+                Course Code: {course.course_code}
+                Department: {course.department.name}
+                Duration: {course.start_date} to {course.end_date}
+                Total Hours: {course.total_hours}
+                
+                COURSE OBJECTIVE:
+                {course.course_objective}
+                
+                COURSE OUTCOME:
+                {course.course_outcome}
+                
+                ENROLLMENT DETAILS:
+                Total Students Enrolled: {enrollments.count()}
+                
+                LIST OF STUDENTS:
+                """
+                
+                for idx, enrollment in enumerate(enrollments, 1):
+                    # Calculate attendance
+                    total_days = AttendanceRecord.objects.filter(enrollment=enrollment).count()
+                    present_days = AttendanceRecord.objects.filter(enrollment=enrollment, is_present=True).count()
+                    attendance_percentage = (present_days / total_days) * 100 if total_days > 0 else 0
+                    
+                    report_content += f"""
+                {idx}. {enrollment.student.name} (Reg No: {enrollment.student.registration_number})
+                   Attendance: {present_days}/{total_days} ({attendance_percentage:.1f}%)
+                   Certificate Issued: {'Yes' if hasattr(enrollment, 'certificate') else 'No'}
+                    """
+                
+                report_content += f"""
+                Report Generated On: {timezone.now().date()}
+                """
+                
+                # Create a temporary file
+                with tempfile.NamedTemporaryFile(suffix='.txt', delete=False) as temp_file:
+                    temp_file.write(report_content.encode('utf-8'))
+                    temp_path = temp_file.name
+                
+                # Save the report file to the model
+                try:
+                    report = course.report
+                except CourseReport.DoesNotExist:
+                    report = CourseReport(course=course)
+                
+                with open(temp_path, 'rb') as f:
+                    report_filename = f"report_{course.course_code}.txt"
+                    report.report_file.save(report_filename, BytesIO(f.read()))
+                
+                # Clean up the temporary file
+                os.unlink(temp_path)
+                
+                messages.success(request, 'Report generated successfully as text file.')
+                return redirect('view_report', report_pk=report.pk)
     
     context = {
         'course': course,
         'can_generate_report': can_generate_report,
-        'enrollments': enrollments,  # Add enrollments to context
+        'enrollments': enrollments,
     }
     
-    
     return render(request, 'certificate_courses/generate_report.html', context)
+
 
 @login_required
 def view_report(request, report_pk):

@@ -1,4 +1,3 @@
-<!-- templates/certificate_courses/generate_report.html -->
 {% extends "base.html" %}
 
 {% block title %}Generate Report - {{ course.name }}{% endblock %}
@@ -28,7 +27,7 @@
                     <li>All enrolled students have attendance records</li>
                     <li>All eligible students have certificates</li>
                 </ul>
-                <p class="mb-0">Click the button below to generate a comprehensive report for this course.</p>
+                <p class="mb-0">Select your preferred format and click the button below to generate a comprehensive report for this course.</p>
             </div>
             
             <div class="card mb-4">
@@ -60,10 +59,12 @@
                                     <th>Total Hours</th>
                                     <td>{{ course.total_hours }}</td>
                                 </tr>
+                                {% if course.num_modules %}
                                 <tr>
                                     <th>Number of Modules</th>
                                     <td>{{ course.num_modules }}</td>
                                 </tr>
+                                {% endif %}
                             </tbody>
                         </table>
                     </div>
@@ -87,9 +88,38 @@
             
             <form method="post" novalidate>
                 {% csrf_token %}
+                
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <strong>Report Format</strong>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="report_format" id="formatPDF" value="pdf" checked>
+                                    <label class="form-check-label" for="formatPDF">
+                                        <i class="fas fa-file-pdf text-danger me-1"></i> PDF Document
+                                        <small class="d-block text-muted">Best for printing and distribution</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="report_format" id="formatDOCX" value="docx">
+                                    <label class="form-check-label" for="formatDOCX">
+                                        <i class="fas fa-file-word text-primary me-1"></i> Word Document (DOCX)
+                                        <small class="d-block text-muted">Editable format for further customization</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                     <button type="submit" class="btn btn-primary btn-lg">
-                        <i class="fas fa-file-pdf me-1"></i> Generate Final Report
+                        <i class="fas fa-file-download me-1"></i> Generate Report
                     </button>
                 </div>
             </form>
@@ -117,7 +147,7 @@
                     </li>
                     {% endif %}
                     
-                    {% if not enrollment.has_certificate %}
+                    {% if enrollment.has_sufficient_attendance and not enrollment.has_certificate %}
                     <li>{{ enrollment.student.name }} needs a certificate. 
                         <a href="{% url 'generate_certificates' course_pk=course.pk %}" class="alert-link">Generate certificates</a>
                     </li>
