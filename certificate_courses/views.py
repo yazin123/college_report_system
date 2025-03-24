@@ -511,6 +511,8 @@ def view_certificate(request, certificate_pk):
 def generate_report(request, course_pk):
     department = request.user.department
     course = get_object_or_404(CertificateCourse, pk=course_pk, department=department)
+    enrollments = course.enrollments.all()
+    can_generate_report = course.can_generate_report()
     
     # Check if report can be generated
     if not course.can_generate_report():
@@ -585,7 +587,10 @@ def generate_report(request, course_pk):
     
     context = {
         'course': course,
+        'can_generate_report': can_generate_report,
+        'enrollments': enrollments,  # Add enrollments to context
     }
+    
     
     return render(request, 'certificate_courses/generate_report.html', context)
 
